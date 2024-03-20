@@ -1,55 +1,74 @@
 import streamlit as st
 import pandas as pd
 
-# 데이터 로드 및 전처리 함수
 def survey():
-    def load_data():
-        questions = pd.read_csv('./db_data/question.csv')
-        tags = pd.read_csv('./db_data/tag.csv')
-        tag_classes = pd.read_csv('./db_data/tag_class.csv')
-        return questions, tags, tag_classes
+    # CSV 파일 로드
+    question_df = pd.read_csv('./db_data/question.csv')
+    tag_df = pd.read_csv('./db_data/tag.csv')
+    tag_class_df = pd.read_csv('./db_data/tag_class.csv')
+    tag_to_jobs_df = pd.read_csv('./db_data/tag_to_jobs.csv')
+    jobs_df = pd.read_csv('./db_data/jobs.csv')
 
-    def preprocess_data(questions, tags, tag_classes):
-        # 태그와 태그 클래스 정보를 병합
-        tags_with_class = pd.merge(tags, tag_classes, on='id_tag_class')
-        # 질문 정보와 태그 정보를 병합하여 각 질문에 대한 가능한 태그들을 매핑
-        questions_with_tags = pd.merge(questions, tags_with_class, on='id_tag_class')
-        return questions_with_tags
+    # 질문 데이터와 태그 데이터를 매핑
+    questions_tags_map = {}
+    tags_code_map = {}  # 태그 이름을 태그 코드로 매핑
+    for _, row in question_df.iterrows():
+        question_tags = tag_df[tag_df['id_tag'].astype(str).str.startswith(str(row['id_tag_class']))]
+        questions_tags_map[row['id_question']] = {
+            'question': f"Q{row['id_question']} {row['name_question']}",
+            'tags': [f"#{tag}" for tag in question_tags['answer_tag'].tolist()]
+        }
+        for _, tag_row in question_tags.iterrows():
+            tags_code_map[f"#{tag_row['answer_tag']}"] = str(tag_row['id_tag'])
 
-    questions, tags, tag_classes = load_data()
-    questions_with_tags = preprocess_data(questions, tags, tag_classes)
-    
-    st.title('설문조사')
+    # Streamlit 앱
+    def app():
+        st.title("설문조사 앱")
 
-    responses = {}  # 사용자 응답 저장 딕셔너리
-    
-    for _, row in questions.iterrows():
-        st.markdown(f"**Q {row['id_question']}: {row['name_question']}**")
-        options = questions_with_tags[questions_with_tags['id_question'] == row['id_question']]
+        # 사용자 응답 저장을 위한 딕셔너리
+        responses = {}
+
+        # 질문별로 Streamlit 컴포넌트 생성
+        for q_id, q_data in questions_tags_map.items():
+            # 질문 표시
+            st.write(q_data['question'])
+            cols = st.columns(1 if q_id in [1, 3] else 4)  # 1번과 3번 질문은 하나의 열, 나머지는 4열로 표시
+            for i, tag in enumerate(q_data['tags']):
+                # 각 태그를 적절한 열에 배치
+                col_index = i % len(cols)
+                response = cols[col_index].checkbox(tag, key=f"{q_id}_{i}")
+                if response:
+                    responses.setdefault(q_id, []).append(tags_code_map[tag])  # "#" 제거 및 코드로 변환
         
-        selected_options = []
-        if row['id_question'] in [1, 3]:  # 1번과 3번 질문의 경우
-            for _, option_row in options.iterrows():
-                option_text = f"#{option_row['answer_tag']}"  # 선택지 앞에 # 추가
-                if st.checkbox(option_text, key=f"{row['id_question']}_{option_row['id_tag']}"):
-                    # 응답을 ID와 태그 클래스 ID로 저장
-                    selected_options.append({'id_tag': option_row['id_tag'], 'id_tag_class': option_row['id_tag_class']})
-        else:  # 다른 질문들의 경우
-            options_split = [options.iloc[i:i + 4] for i in range(0, len(options), 4)]
-            for option_group in options_split:
-                cols = st.columns(len(option_group))
-                for col, (_, option_row) in zip(cols, option_group.iterrows()):
-                    option_text = f"#{option_row['answer_tag']}"
-                    if col.checkbox(option_text, key=f"{row['id_question']}_{option_row['id_tag']}"):
-                        # 응답을 ID와 태그 클래스 ID로 저장
-                        selected_options.append({'id_tag': option_row['id_tag'], 'id_tag_class': option_row['id_tag_class']})
+        # 모든 응답을 처리하고 결과를 표시
+        if st.button("제출"):
+            st.write("선택한 답변:")
+            selected_tags = [int(tag) for tags in responses.values() for tag in tags]  # 태그 코드를 정수형으로 변환
 
-        responses[row['id_question']] = selected_options
+            # 각 직업별로 선택된 태그와 일치하는 태그의 수를 카운트
+            job_match_counts = tag_to_jobs_df[tag_to_jobs_df['id_tag'].isin(selected_tags)]
+            job_match_counts = job_match_counts.groupby('id_jobs')['id_tag'].count().reset_index(name='match_count')
 
-    if st.button('제출'):
-        # 사용자 응답 출력 (개선 가능)
-        for question_id, options in responses.items():
-            st.write(f"Q {question_id}: ", [f"ID Tag: {opt['id_tag']}, ID Tag Class: {opt['id_tag_class']}" for opt in options])
+            # 일치하는 태그의 수를 기준으로 정렬
+            job_match_counts = job_match_counts.sort_values(by='match_count', ascending=False)
 
-if __name__ == '__main__':
-    survey()
+            # 상위 3순위 직업의 일치 태그 수를 구함
+            top_counts = job_match_counts['match_count'].unique()[:3]
+
+            if len(top_counts) > 0:
+                st.write("추천 직업:")
+                for i, count in enumerate(top_counts, start=1):
+                    # 현재 순위에 해당하는 모든 직업 ID 찾기
+                    current_rank_jobs = job_match_counts[job_match_counts['match_count'] == count]
+                    current_rank_job_ids = current_rank_jobs['id_jobs'].unique()
+                    
+                    # 일치하는 직업 이름 찾기
+                    matched_jobs_names = jobs_df[jobs_df['id_jobs'].isin(current_rank_job_ids)]['name_jobs'].tolist()
+                    
+                    st.write(f"{i}순위 (일치하는 태그 수: {count}):")
+                    for job_name in matched_jobs_names:
+                        st.write(f"- {job_name}")
+            else:
+                st.write("선택한 태그에 해당하는 추천 직업이 없습니다.")
+
+    app()

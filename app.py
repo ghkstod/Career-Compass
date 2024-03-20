@@ -10,7 +10,6 @@ import plotly.graph_objects as go
 import plotly.express as px 
 from board import board
 from home import home
-from edu_reco import edu
 from survey import survey
 
 def main():
@@ -33,7 +32,7 @@ def main():
         survey()
         
     if choice=='교육추천':
-        edu()
+        st.write('mmmm')
         
     if choice=='공고추천':
 
