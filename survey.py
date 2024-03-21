@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-from edu import edu
 
 def survey():
     # CSV 파일 로드
@@ -66,17 +65,11 @@ def survey():
                     matched_jobs_names = jobs_df[jobs_df['id_jobs'].isin(current_rank_job_ids)]['name_jobs'].tolist()
                     
                     st.write(f"{i}순위 ")
-                    for job_id, job_name in zip(current_rank_job_ids, matched_jobs_names):
-                        st.markdown(f'{job_name}')
+                    for job_name in matched_jobs_names:
+                        st.markdown(f"{job_name}")
                         if st.button(f"{job_name} 교육과정 확인", key=f"{job_name}"):
-                            # 세션 상태에 선택된 직업 ID 저장
-                            st.session_state.selected_job_id = job_id
-                            # 세션 상태에 페이지 상태 업데이트
-                            st.session_state.page = 'edu_recommendation'
-                            edu()
-                
+                            st.write('')
             else:
                 st.write("선택한 태그에 해당하는 추천 직업이 없습니다.")
 
     app()
- 

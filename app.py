@@ -12,6 +12,7 @@ from board import board
 from home import home
 from survey import survey
 from edu import edu 
+from work import work
 
 def main():
     with st.sidebar:
@@ -36,25 +37,7 @@ def main():
         edu()
         
     if choice=='공고추천':
-
-        # 각 버튼에 대한 내용 정의
-        button_options = {
-            "Button 1": "This is the content for Button 1",
-            "Button 2": "This is the content for Button 2",
-            "Button 3": "This is the content for Button 3",
-        }
-
-        # 각 버튼을 생성하고 클릭 여부를 확인
-        button_clicked = {}
-        for option in button_options.keys():
-            button_clicked[option] = st.button(option)
-
-        # 클릭한 버튼에 대해 내용을 표시하는 창 생성
-        for option, clicked in button_clicked.items():
-            if clicked:
-                st.subheader(option)
-                content = st.text_area("Write something:")
-                st.write(f"You wrote: {content}")
+        work()
                 
             
     if choice=='커뮤니티':
