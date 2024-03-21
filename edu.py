@@ -2,24 +2,23 @@ import pandas as pd
 import streamlit as st
 
 def edu():
-    # Load CSV files
+    # CSV 파일 로드
     path = './db_data/'
     edu_program_df = pd.read_csv(path + 'edu_program.csv')
     jobs_df = pd.read_csv(path + 'jobs.csv')
     ncs_to_jobs_df = pd.read_csv(path + 'ncs_to_jobs.csv')
     edu_company_df = pd.read_csv(path + 'edu_company.csv')
 
-    # Simplify region names and sort them alphabetically
+    # 지역 이름 단순화 및 알파벳 순으로 정렬
     edu_company_df['simplified_address'] = edu_company_df['address'].apply(lambda x: x.split()[0] if pd.notnull(x) else x)
     unique_regions = sorted(edu_company_df['simplified_address'].unique())
     
-
-    # Filter related jobs
+    # 관련 직업 필터링
     unique_ncs_codes = edu_program_df['ncs_code'].unique()
     related_job_ids = ncs_to_jobs_df[ncs_to_jobs_df['ncs_code'].isin(unique_ncs_codes)]['id_jobs'].unique()
     related_jobs = jobs_df[jobs_df['id_jobs'].isin(related_job_ids)]
 
-    # Streamlit UI setup
+    # Streamlit UI 설정
     st.title("직업연계 교육추천")
 
     selected_job = st.selectbox("직업을 선택하세요", related_jobs["name_jobs"].unique())
@@ -27,21 +26,26 @@ def edu():
     selected_mode = st.selectbox("온라인 여부를 선택하세요", ['All', 'Online', 'Offline'])
 
     def get_programs_for_job(job_title, region, mode):
+        # 선택된 직업 제목에 해당하는 job_id 가져오기
         job_id = related_jobs[related_jobs['name_jobs'] == job_title]['id_jobs'].iloc[0]
+        # 해당 job_id와 관련된 ncs 코드 가져오기
         ncs_codes = ncs_to_jobs_df[ncs_to_jobs_df['id_jobs'] == job_id]['ncs_code']
+        # 추천 교육 프로그램 찾기
         recommended_programs = edu_program_df[edu_program_df['ncs_code'].isin(ncs_codes)]
+        # 교육 회사 정보와 결합
         recommended_programs = recommended_programs.merge(edu_company_df, on='id_edu_company', how='left')
 
+        # 온라인/오프라인 모드 필터
         if mode != 'All':
             mode_filter = '온라인' if mode == 'Online' else '오프라인'
             recommended_programs = recommended_programs[recommended_programs['online_status'] == mode_filter]
 
+        # 지역 필터
         if region != 'All':
             recommended_programs = recommended_programs[recommended_programs['simplified_address'] == region]
 
         return recommended_programs
     
-
     if st.button("교육추천"):
         recommended_programs = get_programs_for_job(selected_job, selected_region, selected_mode)
         
@@ -51,7 +55,7 @@ def edu():
                 for col_num, index in enumerate(range(i, min(i + 3, len(recommended_programs)))):
                     program = recommended_programs.iloc[index]
                     with cols[col_num]:
-                        # 카드 형식으로 교육 프로그램 정보를 표시
+                        # 카드 형식으로 교육 프로그램 정보 표시
                         st.markdown(
                             f"""
                             <div style="background-color: #cbf3f0; padding: 20px; border-radius: 10px; margin: 10px 0; box-shadow: 0 2px 4px rgba(0,0,0,.1);">

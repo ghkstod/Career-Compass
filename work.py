@@ -1,9 +1,8 @@
-# Import necessary libraries
 import streamlit as st
 import pandas as pd
 
 def work():
-    # Read the CSV files
+    # CSV 파일 읽기
     path = './db_data/'
     def read_data():
         jobs = pd.read_csv(path+'jobs.csv')
@@ -12,32 +11,32 @@ def work():
         worknet_company = pd.read_csv(path+'worknet_company.csv')
         return jobs, jobs_to_worknet, worknet_positions, worknet_company
 
-    # Process and match the data
+    # 데이터 처리 및 매칭
     def match_data(jobs, jobs_to_worknet, worknet_positions, worknet_company):
-        # First match: jobs to jobs_to_worknet
+        # 첫번째 매칭: jobs와 jobs_to_worknet 매칭
         matched_jobs = pd.merge(jobs, jobs_to_worknet, on='id_jobs')
-        # Second match: matched_jobs to worknet_positions
+        # 두번째 매칭: matched_jobs와 worknet_positions 매칭
         matched_positions = pd.merge(matched_jobs, worknet_positions, on='work_code')
-        # Final match: matched_positions to worknet_company
+        # 최종 매칭: matched_positions와 worknet_company 매칭
         final_matched_data = pd.merge(matched_positions, worknet_company, on='id_work_company')
         return final_matched_data
 
-    # Streamlit app interface
+    # Streamlit 앱 인터페이스
     def app_interface(final_matched_data):
         st.title("공고매칭")
         
-        # Let users select a job title to view postings
+        # 사용자가 직무 제목을 선택하여 게시물 보기
         job_titles = final_matched_data['name_jobs'].unique()
-        # Add an empty option at the beginning of the job titles list
-        job_titles = [''] + list(job_titles)  # Empty option added
+        # 직무 제목 리스트의 시작 부분에 빈 옵션 추가
+        job_titles = [''] + list(job_titles)  # 빈 옵션 추가
         selected_job_title = st.selectbox("직업을 선택하세요:", job_titles)
         
-        # Only proceed if a job title is selected
+        # 직무 제목이 선택된 경우에만 진행
         if selected_job_title:
-            # Filter data based on selected job title
+            # 선택된 직무 제목에 기반한 데이터 필터링
             filtered_data = final_matched_data[final_matched_data['name_jobs'] == selected_job_title]
             
-            # Display job postings and company names in card format, one per line
+            # 게시물과 회사 이름을 카드 형식으로 한 줄씩 표시
             for _, row in filtered_data.iterrows():
                 st.markdown(f"""
                 <div style="background-color:#cbf3f0;padding:20px;border-radius:10px;margin-bottom:10px;">
