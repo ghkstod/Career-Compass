@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+from edu import edu
 
 def survey():
     # CSV 파일 로드
@@ -42,7 +43,6 @@ def survey():
         
         # 모든 응답을 처리하고 결과를 표시
         if st.button("제출"):
-            st.write("선택한 답변:")
             selected_tags = [int(tag) for tags in responses.values() for tag in tags]  # 태그 코드를 정수형으로 변환
 
             # 각 직업별로 선택된 태그와 일치하는 태그의 수를 카운트
@@ -65,10 +65,18 @@ def survey():
                     # 일치하는 직업 이름 찾기
                     matched_jobs_names = jobs_df[jobs_df['id_jobs'].isin(current_rank_job_ids)]['name_jobs'].tolist()
                     
-                    st.write(f"{i}순위 (일치하는 태그 수: {count}):")
-                    for job_name in matched_jobs_names:
-                        st.write(f"- {job_name}")
+                    st.write(f"{i}순위 ")
+                    for job_id, job_name in zip(current_rank_job_ids, matched_jobs_names):
+                        st.markdown(f'{job_name}')
+                        if st.button(f"{job_name} 교육과정 확인", key=f"{job_name}"):
+                            # 세션 상태에 선택된 직업 ID 저장
+                            st.session_state.selected_job_id = job_id
+                            # 세션 상태에 페이지 상태 업데이트
+                            st.session_state.page = 'edu_recommendation'
+                            edu()
+                
             else:
                 st.write("선택한 태그에 해당하는 추천 직업이 없습니다.")
 
     app()
+ 

@@ -11,6 +11,7 @@ import plotly.express as px
 from board import board
 from home import home
 from survey import survey
+from edu import edu 
 
 def main():
     with st.sidebar:
@@ -32,7 +33,7 @@ def main():
         survey()
         
     if choice=='교육추천':
-        st.write('mmmm')
+        edu()
         
     if choice=='공고추천':
 
