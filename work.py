@@ -23,13 +23,13 @@ def work():
 
     # Streamlit 앱 인터페이스
     def app_interface(final_matched_data):
-        st.title("공고매칭")
+        st.markdown('<h1 style = "color : #2ec4b6; font-size : 50px; text-align : left;">공고매칭</h1>', unsafe_allow_html=True)
         
         # 사용자가 직무 제목을 선택하여 게시물 보기
         job_titles = final_matched_data['name_jobs'].unique()
         # 직무 제목 리스트의 시작 부분에 빈 옵션 추가
         job_titles = [''] + list(job_titles)  # 빈 옵션 추가
-        selected_job_title = st.selectbox("직업을 선택하세요:", job_titles)
+        selected_job_title = st.selectbox("찾을 직업을 선택해!", job_titles)
         
         # 직무 제목이 선택된 경우에만 진행
         if selected_job_title:

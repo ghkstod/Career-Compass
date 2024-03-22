@@ -19,11 +19,11 @@ def edu():
     related_jobs = jobs_df[jobs_df['id_jobs'].isin(related_job_ids)]
 
     # Streamlit UI 설정
-    st.title("직업연계 교육추천")
+    st.markdown('<h1 style = "color : #2ec4b6; font-size : 50px; text-align : left;">교육매칭</h1>', unsafe_allow_html=True)
 
-    selected_job = st.selectbox("직업을 선택하세요", related_jobs["name_jobs"].unique())
-    selected_region = st.selectbox("지역을 선택하세요", ['All'] + list(unique_regions))
-    selected_mode = st.selectbox("온라인 여부를 선택하세요", ['All', 'Online', 'Offline'])
+    selected_job = st.selectbox("찾을 직업을 선택해!", related_jobs["name_jobs"].unique())
+    selected_region = st.selectbox("교육을 들을 지역을 골라줘", ['All'] + list(unique_regions))
+    selected_mode = st.selectbox("온라인 강의만 들을거야?", ['상관없어', '응', '아니'])
 
     def get_programs_for_job(job_title, region, mode):
         # 선택된 직업 제목에 해당하는 job_id 가져오기
@@ -36,9 +36,10 @@ def edu():
         recommended_programs = recommended_programs.merge(edu_company_df, on='id_edu_company', how='left')
 
         # 온라인/오프라인 모드 필터
-        if mode != 'All':
-            mode_filter = '온라인' if mode == 'Online' else '오프라인'
-            recommended_programs = recommended_programs[recommended_programs['online_status'] == mode_filter]
+        if mode == '응':
+            recommended_programs = recommended_programs[recommended_programs['online_status'] == '온라인']
+        elif mode == '아니':
+            recommended_programs = recommended_programs[recommended_programs['online_status'] == '오프라인']
 
         # 지역 필터
         if region != 'All':
@@ -50,9 +51,9 @@ def edu():
         recommended_programs = get_programs_for_job(selected_job, selected_region, selected_mode)
         
         if not recommended_programs.empty:
-            for i in range(0, len(recommended_programs), 3):
-                cols = st.columns(3)
-                for col_num, index in enumerate(range(i, min(i + 3, len(recommended_programs)))):
+            for i in range(0, len(recommended_programs), 2):
+                cols = st.columns(2)
+                for col_num, index in enumerate(range(i, min(i + 2, len(recommended_programs)))):
                     program = recommended_programs.iloc[index]
                     with cols[col_num]:
                         # 카드 형식으로 교육 프로그램 정보 표시
@@ -71,4 +72,4 @@ def edu():
                             unsafe_allow_html=True
                         )
         else:
-            st.write("조건에 맞는 교육 프로그램을 찾을 수 없습니다.")
+            st.write("아쉽지만 조건에 맞는 교육 프로그램이 없어...")

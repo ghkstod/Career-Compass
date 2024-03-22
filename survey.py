@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import sqlite3
 
 def survey():
     # CSV 파일 로드
@@ -20,56 +21,81 @@ def survey():
         }
         for _, tag_row in question_tags.iterrows():
             tags_code_map[f"#{tag_row['answer_tag']}"] = str(tag_row['id_tag'])
+            
+    def initialize_db(db_path='./db/responses.db'):
+        conn = sqlite3.connect(db_path)
+        c = conn.cursor()
+        c.execute('''CREATE TABLE IF NOT EXISTS responses (response_id INTEGER PRIMARY KEY AUTOINCREMENT)''')
+        c.execute('''CREATE TABLE IF NOT EXISTS user_responses (response_id INTEGER, tag_id INTEGER, FOREIGN KEY(response_id) REFERENCES responses(response_id))''')
+        conn.commit()
+        conn.close()
 
-    # Streamlit 앱
+    initialize_db()
+
+    def save_responses(tag_ids, db_path='./db/responses.db'):
+        conn = sqlite3.connect(db_path)
+        c = conn.cursor()
+        c.execute('INSERT INTO responses DEFAULT VALUES')
+        response_id = c.lastrowid
+        for tag_id in tag_ids:
+            c.execute('INSERT INTO user_responses (response_id, tag_id) VALUES (?, ?)', (response_id, tag_id))
+        conn.commit()
+        conn.close()
+
     def app():
-        st.title("설문조사 앱")
-
-        # 사용자 응답 저장을 위한 딕셔너리
+        st.markdown('<h1 style = "color : #2ec4b6; font-size : 50px; text-align : left;">직업추천</h1>', unsafe_allow_html=True)
+        st.write('밑의 설문조사를 작성하고, 너의 취향에 맞는 직업을 추천받아 봐!')
         responses = {}
+        missing_responses = []
 
-        # 질문별로 Streamlit 컴포넌트 생성
         for q_id, q_data in questions_tags_map.items():
-            # 질문 표시
             st.write(q_data['question'])
-            cols = st.columns(1 if q_id in [1, 3] else 4)  # 1번과 3번 질문은 하나의 열, 나머지는 4열로 표시
+            cols = st.columns(1) if q_id in [1, 3] else st.columns(3)
+
             for i, tag in enumerate(q_data['tags']):
-                # 각 태그를 적절한 열에 배치
                 col_index = i % len(cols)
                 response = cols[col_index].checkbox(tag, key=f"{q_id}_{i}")
                 if response:
-                    responses.setdefault(q_id, []).append(tags_code_map[tag])  # "#" 제거 및 코드로 변환
-        
-        # 모든 응답을 처리하고 결과를 표시
+                    responses.setdefault(q_id, []).append(tags_code_map[tag])
+
         if st.button("제출"):
-            selected_tags = [int(tag) for tags in responses.values() for tag in tags]  # 태그 코드를 정수형으로 변환
-
-            # 각 직업별로 선택된 태그와 일치하는 태그의 수를 카운트
-            job_match_counts = tag_to_jobs_df[tag_to_jobs_df['id_tag'].isin(selected_tags)]
-            job_match_counts = job_match_counts.groupby('id_jobs')['id_tag'].count().reset_index(name='match_count')
-
-            # 일치하는 태그의 수를 기준으로 정렬
-            job_match_counts = job_match_counts.sort_values(by='match_count', ascending=False)
-
-            # 상위 3순위 직업의 일치 태그 수를 구함
-            top_counts = job_match_counts['match_count'].unique()[:3]
-
-            if len(top_counts) > 0:
-                st.write("추천 직업:")
-                for i, count in enumerate(top_counts, start=1):
-                    # 현재 순위에 해당하는 모든 직업 ID 찾기
-                    current_rank_jobs = job_match_counts[job_match_counts['match_count'] == count]
-                    current_rank_job_ids = current_rank_jobs['id_jobs'].unique()
-                    
-                    # 일치하는 직업 이름 찾기
-                    matched_jobs_names = jobs_df[jobs_df['id_jobs'].isin(current_rank_job_ids)]['name_jobs'].tolist()
-                    
-                    st.write(f"{i}순위 ")
-                    for job_name in matched_jobs_names:
-                        st.markdown(f"{job_name}")
-                        if st.button(f"{job_name} 교육과정 확인", key=f"{job_name}"):
-                            st.write('')
+            for q_id in questions_tags_map:
+                if q_id not in responses:
+                    missing_responses.append(f"{q_id}번 질문")
+            
+            if missing_responses:
+                st.error(f"질문은 빠짐없이 체크해야해!!: {', '.join(missing_responses)}")
             else:
-                st.write("선택한 태그에 해당하는 추천 직업이 없습니다.")
+                selected_tags = [int(tag) for tags in responses.values() for tag in tags]
+                save_responses(selected_tags)
+                job_match_counts = tag_to_jobs_df[tag_to_jobs_df['id_tag'].isin(selected_tags)].groupby('id_jobs')['id_tag'].count().reset_index(name='match_count').sort_values(by='match_count', ascending=False)
+
+                top_counts = job_match_counts['match_count'].unique()[:3]
+                ranks_to_display = 0
+
+                for count in top_counts:
+                    current_rank_jobs = job_match_counts[job_match_counts['match_count'] == count]
+                    if len(current_rank_jobs) >= 4 and ranks_to_display == 0:
+                        ranks_to_display = 1
+                        break
+                    elif len(current_rank_jobs) < 4:
+                        ranks_to_display += 1
+
+                if ranks_to_display > 0:
+                    st.write("이런 직업들이 어울리겠는데??")
+                    for i, count in enumerate(top_counts[:ranks_to_display], start=1):
+                        current_rank_jobs = job_match_counts[job_match_counts['match_count'] == count]
+                        current_rank_job_ids = current_rank_jobs['id_jobs'].unique()
+                        matched_jobs_names = jobs_df[jobs_df['id_jobs'].isin(current_rank_job_ids)]['name_jobs'].tolist()
+                        
+                        st.write(f"{i}순위 ")
+                        for job_name in matched_jobs_names:
+                            st.markdown(f"{job_name}")
+                        # 1순위에 4개 이상 직업이 있으면 그만 출력
+                        if i == 1 and len(matched_jobs_names) >= 4:
+                            break
+                else:
+                    st.write("선택한 태그에 해당하는 추천 직업이 없습니다.")
+
 
     app()

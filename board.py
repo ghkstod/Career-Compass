@@ -94,7 +94,7 @@ def board():
                 like_post(post_id)
                 st.success("게시글에 좋아요를 눌렀습니다.")
                 st.experimental_rerun()
-                
+            '''
             # 게시글 수정 버튼
             if col2.button("수정하기", key=f"edit_{post_id}"):
                 st.session_state['current_view'] = 'edit_post'
@@ -106,7 +106,7 @@ def board():
                 st.success("게시글이 삭제되었습니다.")
                 st.session_state['current_view'] = 'main_page'
                 st.experimental_rerun()
-            
+            '''
             # 메인으로 돌아가기 버튼
             if col4.button("메인으로 돌아가기", key=f"back_to_main_from_view"):
                 st.session_state['current_view'] = 'main_page'
@@ -128,10 +128,12 @@ def board():
         for comment_id, content, likes in comments:
             # 댓글과 댓글 좋아요 버튼, 댓글 삭제 버튼을 표시합니다.
             st.markdown(f"- {content} ")
+            '''
             if st.button("삭제", key=f"delete_comment_{comment_id}"):
                 delete_comment(comment_id)
                 st.success("댓글이 삭제되었습니다.")
                 st.experimental_rerun()
+            '''
                     
             # 댓글 작성 및 제출 부분
         comment_content = st.text_area("댓글 작성하기", value=st.session_state[comment_input_key], key=f"comment_{post_id}")
@@ -159,7 +161,7 @@ def board():
 
     def main_page():
         """메인 페이지와 새 게시글 작성 버튼을 표시합니다."""
-        st.title("게시판")
+        st.markdown('<h1 style = "color : #2ec4b6; font-size : 50px; text-align : left;">커뮤니티</h1>', unsafe_allow_html=True)
         if st.button("새 게시글 작성"):
             st.session_state['current_view'] = 'add_post'
 

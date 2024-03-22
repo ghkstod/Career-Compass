@@ -16,7 +16,7 @@ from work import work
 
 def main():
     with st.sidebar:
-        choice = option_menu("Menu", ["Main", "설문조사", "교육추천","공고매칭","커뮤니티"],
+        choice = option_menu("Menu", ["Main", "직업추천", "교육매칭","공고매칭","커뮤니티"],
                             icons=['house', 'bi bi-search','bi bi-stack-overflow' ,'bi bi-person-badge-fill','bi bi-people-fill'],
                             menu_icon="app-indicator", default_index=0,
                             styles={
@@ -30,16 +30,15 @@ def main():
     if choice=='Main':
         home()
         
-    if choice=='설문조사':
+    if choice=='직업추천':
         survey()
         
-    if choice=='교육추천':
+    if choice=='교육매칭':
         edu()
         
     if choice=='공고매칭':
         work()
-                
-            
+                      
     if choice=='커뮤니티':
         board()
         
