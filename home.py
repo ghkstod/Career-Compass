@@ -1,9 +1,6 @@
 import streamlit as st 
 import bcrypt
 import sqlite3
-import webbrowser
-
-
 
 def home():
     
@@ -14,15 +11,14 @@ def home():
     st.write('')
     st.write('')
 
-    
     st.markdown('<h4 style = "color : #2ec4b6; "> 🧭 개발자의 말</h4>', unsafe_allow_html = True)
     st.write('주요 기능 알파 테스트 단계입니다.')
     st.write('향후 기능을 추가할 예정이고 더 좋은 서비스를 제공하고자 테스터분들의 피드백을 받고 있습니다.')
     st.write('불편한 사항 및 문의사항이 있으시면 아래 구글폼을 통해서 전달해주시면 감사드리겠습니다. 알파 테스터 어려분 모두에게 감사의 말씀을 드립니다.')
     st.write('')
-    if st.button('설문조사하기'):
-        webbrowser.open_new_tab("https://docs.google.com/forms/d/e/1FAIpQLScmomvXZ1mDu4Brg7tASW9yOwjw7qxtsx34Ias9LoIKZTpfDw/viewform")
     
+    # 변경된 부분: 버튼 대신 하이퍼링크를 사용
+    st.markdown('[설문조사 하러 가기](https://docs.google.com/forms/d/e/1FAIpQLScmomvXZ1mDu4Brg7tASW9yOwjw7qxtsx34Ias9LoIKZTpfDw/viewform)', unsafe_allow_html=True)
 
     # 사이트 주요 기능
     st.markdown('<h4 style = "color : #2ec4b6; "> 🧭 사이트 주요 기능</h4>', unsafe_allow_html = True)
