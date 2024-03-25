@@ -3,6 +3,9 @@ import bcrypt
 import sqlite3
 
 def home():
+    '''
+    Streamlit 애플리케이션의 메인화면의 내용을 꾸미는 함수
+    '''
     
     st.markdown('<h1 style = "color : #2ec4b6; font-size : 36px; text-align : right;">CareerCompass</h1>', unsafe_allow_html=True)
     st.markdown('<h6 style = "color :#2ec4b6; text-align : right;"> 사용자의 성향을 기반으로 한 직업 추천 및 교육 프로그램 매칭 서비스</h6>', unsafe_allow_html=True)
