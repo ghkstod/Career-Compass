@@ -22,10 +22,13 @@ def edu():
     st.markdown('<h1 style = "color : #2ec4b6; font-size : 50px; text-align : left;">교육매칭</h1>', unsafe_allow_html=True)
 
     selected_job = st.selectbox("찾을 직업을 선택해!", related_jobs["name_jobs"].unique())
-    selected_region = st.selectbox("교육을 들을 지역을 골라줘", ['All'] + list(unique_regions))
+    
+    # 멀티 셀렉트박스로 변경
+    selected_regions = st.multiselect("교육을 들을 지역을 골라줘", options=['All'] + list(unique_regions), default='All')
+    
     selected_mode = st.selectbox("온라인 강의만 들을거야?", ['상관없어', '응', '아니'])
 
-    def get_programs_for_job(job_title, region, mode):
+    def get_programs_for_job(job_title, regions, mode):
         # 선택된 직업 제목에 해당하는 job_id 가져오기
         job_id = related_jobs[related_jobs['name_jobs'] == job_title]['id_jobs'].iloc[0]
         # 해당 job_id와 관련된 ncs 코드 가져오기
@@ -41,14 +44,14 @@ def edu():
         elif mode == '아니':
             recommended_programs = recommended_programs[recommended_programs['online_status'] == '오프라인']
 
-        # 지역 필터
-        if region != 'All':
-            recommended_programs = recommended_programs[recommended_programs['simplified_address'] == region]
+        # 지역 필터, 'All' 선택 시 모든 지역 표시
+        if 'All' not in regions:
+            recommended_programs = recommended_programs[recommended_programs['simplified_address'].isin(regions)]
 
         return recommended_programs
     
     if st.button("교육추천"):
-        recommended_programs = get_programs_for_job(selected_job, selected_region, selected_mode)
+        recommended_programs = get_programs_for_job(selected_job, selected_regions, selected_mode)
         
         if not recommended_programs.empty:
             for i in range(0, len(recommended_programs), 2):

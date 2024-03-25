@@ -14,6 +14,16 @@ from survey import survey
 from edu import edu 
 from work import work
 
+def download_db():
+    db_path = './db/responses.db'
+    with open(db_path, "rb") as fp:
+        btn = st.download_button(
+            label="",
+            data=fp,
+            file_name="responses.db",
+            mime="application/x-sqlite3"
+        )
+
 def main():
     with st.sidebar:
         choice = option_menu("Menu", ["Main", "직업추천", "교육매칭","공고매칭","커뮤니티"],
@@ -24,8 +34,11 @@ def main():
             "icon": {"color": "black", "font-size": "25px"},
             "nav-link": {"font-size": "16px", "text-align": "left", "margin":"0px", "--hover-color": "#fafafa"},
             "nav-link-selected": {"background-color": "#cbf3f0"},
-        }
+        }                  
         )
+        for i in range(50):
+            st.write('')
+        download_db()  # 버튼 호출
     
     if choice=='Main':
         home()

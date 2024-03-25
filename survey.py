@@ -82,7 +82,7 @@ def survey():
                         ranks_to_display += 1
 
                 if ranks_to_display > 0:
-                    st.write("이런 직업들이 어울리겠는데??")
+                    st.write("이런 직업들이 어울리겠는데??:")
                     for i, count in enumerate(top_counts[:ranks_to_display], start=1):
                         current_rank_jobs = job_match_counts[job_match_counts['match_count'] == count]
                         current_rank_job_ids = current_rank_jobs['id_jobs'].unique()
