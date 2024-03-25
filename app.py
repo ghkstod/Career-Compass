@@ -8,23 +8,27 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 import plotly.express as px 
-from board import board
 from home import home
-from survey import survey
-from edu import edu 
-from work import work
+from survey import SurveyMatcher
+from edu import EduMatcher
+from work import JobMatcher
+from board import BoardApp
 
-def download_db():
-    db_path = './db/responses.db'
-    with open(db_path, "rb") as fp:
-        btn = st.download_button(
-            label="",
-            data=fp,
-            file_name="responses.db",
-            mime="application/x-sqlite3"
-        )
 
 def main():
+    '''
+    CareerCompass 웹 애플리케이션의 메인 함수
+    
+    사용자에게 다음 옵션을 제공하는 사이드바 메뉴를 생성합니다.
+    - Main : 애플리케이션의 메인 화면을 보여줍니다.
+    - 직업추천 : 몇가지 질문과 답변을 통해 사용자의 선호와 능력에 맞는 직업을 추천합니다.
+    - 교육매칭 : 앞서 추천한 직업 또는 사용자가 이미 결정한 직업에 맞는 교육과정을 매칭합니다.
+    - 공고매칭 : 사용자가 희망하는 직업에 맞는 공고를 매칭합니다.
+    - 커뮤니티 : 사용자가 게시판에서 소통할 수 있는 공간을 제공합니다.
+    
+    선택된 메뉴에 따라 해당하는 기능을 실행합니다.
+    '''
+    
     with st.sidebar:
         choice = option_menu("Menu", ["Main", "직업추천", "교육매칭","공고매칭","커뮤니티"],
                             icons=['house', 'bi bi-search','bi bi-stack-overflow' ,'bi bi-person-badge-fill','bi bi-people-fill'],
@@ -36,24 +40,26 @@ def main():
             "nav-link-selected": {"background-color": "#cbf3f0"},
         }                  
         )
-        for i in range(50):
-            st.write('')
-        download_db()  # 버튼 호출
     
     if choice=='Main':
         home()
         
     if choice=='직업추천':
-        survey()
+        survey=SurveyMatcher()
+        survey.run_survey()
         
     if choice=='교육매칭':
-        edu()
+        edu=EduMatcher()
+        edu.app_interface()
         
     if choice=='공고매칭':
-        work()
+        work=JobMatcher()
+        work.app_interface()
+        
                       
     if choice=='커뮤니티':
-        board()
+        board=BoardApp()
+        board.run()
         
     
     
