@@ -1,5 +1,6 @@
 import pandas as pd
 import streamlit as st
+import sqlite3
 
 class EduMatcher:
     '''
@@ -19,25 +20,27 @@ class EduMatcher:
         display_programs(programs) : 추천된 교육 프로그램을 사용자에게 표시합니다.
         display_program_card(program) : 개별 교육 프로그램 정보를 카드 형식으로 표시합니다.
     '''
-    def __init__(self, path='./db_data/'):
+    def __init__(self, db_path='./db/data.db'):
         '''
         EduMatcher 클래스의 인스턴스를 초기화합니다.
-        
+
         매개변수 : 
-            path(str) : 데이터 파일이 위치한 디렉토리의 경로.
+            db_path(str) : SQLite DB 파일 경로.
         '''
-        self.path = path
+        self.db_path = db_path
         self.load_data()
         self.prepare_data()
 
     def load_data(self):
         '''
-        교육 프로그램, 직업, NCS코드, 교육기관 데이터 파일을 로드합니다.
+        SQLite 데이터베이스에서 교육 프로그램, 직업, NCS코드, 교육기관 데이터를 로드합니다.
         '''
-        self.edu_program_df = pd.read_csv(self.path + 'edu_program.csv')
-        self.jobs_df = pd.read_csv(self.path + 'jobs.csv')
-        self.ncs_to_jobs_df = pd.read_csv(self.path + 'ncs_to_jobs.csv')
-        self.edu_company_df = pd.read_csv(self.path + 'edu_company.csv')
+        conn = sqlite3.connect(self.db_path)
+        self.edu_program_df = pd.read_sql_query('SELECT * FROM edu_program', conn)
+        self.jobs_df = pd.read_sql_query('SELECT * FROM jobs', conn)
+        self.ncs_to_jobs_df = pd.read_sql_query('SELECT * FROM ncs_to_jobs', conn)
+        self.edu_company_df = pd.read_sql_query('SELECT * FROM edu_company', conn)
+        conn.close()
 
     def prepare_data(self):
         '''

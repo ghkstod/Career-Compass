@@ -24,30 +24,30 @@ class SurveyMatcher:
         dispaly_matched_jobs : 사용자 응답을 바탕으로 매칭된 직업을 추천하여 출력합니다.
         display_job_rank : 사용자에게 매칭된 직업의 순위를 출력합니다.
         '''
-    def __init__(self, data_path='./db_data/', db_path='./db/responses.db'):
+    def __init__(self, db_path='./db/data.db'):
         '''
         SurveyMatcher 클래스의 인스턴스를 초기화합니다.
         
         매개변수 :
-            data_path(str) : 데이터 파일이 위치한 디렉토리의 경로
             db_path(str) : 사용자의 응답을 저장하는 SQLite DB의 파일 경로
         '''
-        self.data_path = data_path
         self.db_path = db_path
-        self.load_data()
         self.initialize_db()
+        self.load_data()
 
     def load_data(self):
         '''
-        해당 애플리케이션에 필요한 데이터 파일들을 로드하고, 데이터 프레임화 합니다.
-        데이터 파일에는 질문, 태그, 태그 클래스, 태그와 직업의 매핑, 직업 정보가 포함됩니다.
+        SQLite 데이터베이스에서 필요한 데이터를 로드합니다.
         '''
-        
-        self.question_df = pd.read_csv(self.data_path + 'question.csv')
-        self.tag_df = pd.read_csv(self.data_path + 'tag.csv')
-        self.tag_class_df = pd.read_csv(self.data_path + 'tag_class.csv')
-        self.tag_to_jobs_df = pd.read_csv(self.data_path + 'tag_to_jobs.csv')
-        self.jobs_df = pd.read_csv(self.data_path + 'jobs.csv')
+        conn = sqlite3.connect(self.db_path)
+
+        self.question_df = pd.read_sql_query('SELECT * FROM question', conn)
+        self.tag_df = pd.read_sql_query('SELECT * FROM tag', conn)
+        self.tag_class_df = pd.read_sql_query('SELECT * FROM tag_class', conn)
+        self.tag_to_jobs_df = pd.read_sql_query('SELECT * FROM tag_to_jobs', conn)
+        self.jobs_df = pd.read_sql_query('SELECT * FROM jobs', conn)
+
+        conn.close()
         self.prepare_questions_tags_map()
 
     def prepare_questions_tags_map(self):
@@ -128,31 +128,41 @@ class SurveyMatcher:
             self.display_matched_jobs(responses)
 
     def display_matched_jobs(self, responses):
-        '''
-        사용자 응답을 바탕으로 매칭된 직업을 추천하여 출력합니다.
-        매개변수 : 
-            responses(dict) : 사용자의 응답을 담은 딕셔너리
-        '''
         selected_tags = [int(tag) for tags in responses.values() for tag in tags]
         self.save_responses(selected_tags)
         job_match_counts = self.tag_to_jobs_df[self.tag_to_jobs_df['id_tag'].isin(selected_tags)].groupby('id_jobs')['id_tag'].count().reset_index(name='match_count').sort_values(by='match_count', ascending=False)
         top_counts = job_match_counts['match_count'].unique()[:3]
-        ranks_to_display = 0
 
-        for count in top_counts:
-            current_rank_jobs = job_match_counts[job_match_counts['match_count'] == count]
-            if len(current_rank_jobs) >= 4 and ranks_to_display == 0:
-                ranks_to_display = 1
-                break
-            elif len(current_rank_jobs) < 4:
-                ranks_to_display += 1
-
-        if ranks_to_display > 0:
-            st.write("이런 직업들이 어울리겠는데??:")
-            for i, count in enumerate(top_counts[:ranks_to_display], start=1):
-                self.display_job_rank(i, count, job_match_counts)
-        else:
+        if job_match_counts.empty:
             st.write("선택한 태그에 해당하는 추천 직업이 없습니다.")
+            return
+
+        st.write("이런 직업들이 어울리겠는데??:")
+
+        # 순위별로 직업 수를 계산하고 저장합니다.
+        jobs_per_rank = {rank: 0 for rank in range(1, 4)}
+        for i, count in enumerate(top_counts, start=1):
+            current_rank_jobs_count = len(job_match_counts[job_match_counts['match_count'] == count])
+            jobs_per_rank[i] = current_rank_jobs_count
+
+        # 1순위 조건 검사 및 출력
+        if jobs_per_rank[1] >= 3:
+            self.display_job_rank(1, top_counts[0], job_match_counts)
+        else:
+            self.display_job_rank(1, top_counts[0], job_match_counts)
+            # 2순위 조건 검사 및 출력
+            if jobs_per_rank[2] >= 3:
+                # 2순위가 3개 이상인 경우, 3순위는 출력하지 않음
+                self.display_job_rank(2, top_counts[1], job_match_counts)
+            elif jobs_per_rank[2] > 0:
+                # 2순위가 3개 미만이고 존재하는 경우, 2순위를 출력
+                self.display_job_rank(2, top_counts[1], job_match_counts)
+                # 3순위 조건 검사 및 출력
+                if jobs_per_rank[3] > 0:
+                    self.display_job_rank(3, top_counts[2], job_match_counts)
+
+
+
 
     def display_job_rank(self, rank, count, job_match_counts):
         '''
@@ -162,15 +172,23 @@ class SurveyMatcher:
             count(int) : 매칭 카운트
             job_match_counts(DataFrame) : 직업과 매치된 카운트를 포함하는 데이터 프레임
         '''
+        # 순위별 배경색 설정
+        background_colors = {1: '#FFD700', 2: '#C0C0C0', 3: '#CD7F32'}
+        background_color = background_colors.get(rank, '#FFFFFF')  # 기본색은 흰색
+
+        # 배경색이 밝은 경우 글자색을 검정색으로 설정
+        text_color = '#000000' if background_color in ['#FFD700', '#C0C0C0', '#CD7F32'] else '#FFFFFF'
+
         current_rank_jobs = job_match_counts[job_match_counts['match_count'] == count]
         current_rank_job_ids = current_rank_jobs['id_jobs'].unique()
         matched_jobs_names = self.jobs_df[self.jobs_df['id_jobs'].isin(current_rank_job_ids)]['name_jobs'].tolist()
 
-        st.write(f"{rank}순위 ")
+        # 순위별 배경색과 글자색을 적용하여 직업 이름 출력
+        st.markdown(f'<div style="background-color: {background_color}; color: {text_color}; margin: 10px 0px; padding: 10px; border-radius: 10px;"><h3>{rank}순위 직군</h3>', unsafe_allow_html=True)
         for job_name in matched_jobs_names:
-            st.markdown(f"{job_name}")
-        if rank == 1 and len(matched_jobs_names) >= 4:
-            return
+            st.markdown(f'<p style="margin-left: 20px; font-size : 20px; ">- {job_name}</p>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+
 
 if __name__ == '__main__':
     survey_app = SurveyMatcher()

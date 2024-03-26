@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import sqlite3
 
 class JobMatcher:
     '''
@@ -16,40 +17,33 @@ class JobMatcher:
         match_data(): 로드된 데이터를 기반으로 직업과 채용 공고를 매칭합니다.
         app_interface(): 사용자에게 직업 선택 인터페이스를 제공하고 매칭된 채용 공고를 표시합니다.
     '''
-    def __init__(self, path='./db_data/'):
+    def __init__(self, db_path='./db/data.db'):
         '''
         JobMatcher 클래스의 인스턴스를 초기화합니다.
         
         매개변수 : 
-            path(str) : 채용 관련 데이터 파일이 위치한 디렉토리의 경로
+            db_path(str) : SQLite DB 파일 경로
         '''
-        self.path = path
+        self.db_path = db_path
         self.jobs, self.jobs_to_worknet, self.worknet_positions, self.worknet_company = self.load_data()
         self.final_matched_data = self.match_data()
 
+
     def load_data(self):
         '''
-        채용 관련 데이터 파일들을 로드합니다.
-        직업, 직업과 워크넷 코드와의 매핑, 워크넷 채용 공고, 회사 정보 데이터를 불러옵니다.
-        
-        반환값 : 
-            jobs(DataFrame) : 직업에 대한 테이블
-            jobs_to_worknet(DataFrame) : 직업과 워크넷 코드 매핑에 대한 테이블
-            worknet_positions(DataFrame) : 워크넷 공고에 대한 테이블
-            worknet_company(DataFrame) : 회사에 대한 테이블
+        SQLite 데이터베이스에서 채용 관련 데이터를 로드합니다.
         '''
-        jobs = pd.read_csv(self.path+'jobs.csv')
-        jobs_to_worknet = pd.read_csv(self.path+'jobs_to_worknet.csv')
-        worknet_positions = pd.read_csv(self.path+'worknet_positions.csv')
-        worknet_company = pd.read_csv(self.path+'worknet_company.csv')
+        conn = sqlite3.connect(self.db_path)
+        jobs = pd.read_sql_query('SELECT * FROM jobs', conn)
+        jobs_to_worknet = pd.read_sql_query('SELECT * FROM jobs_to_worknet', conn)
+        worknet_positions = pd.read_sql_query('SELECT * FROM worknet_positions', conn)
+        worknet_company = pd.read_sql_query('SELECT * FROM worknet_company', conn)
+        conn.close()
         return jobs, jobs_to_worknet, worknet_positions, worknet_company
 
     def match_data(self):
         '''
         로드된 데이터를 기반으로 직업과 채용 공고를 매칭합니다.
-        
-        반환값 :
-            final_matched_data(DataFrame) : 매칭된 채용 공고 정보를 포함하는 데이터 프레임
         '''
         matched_jobs = pd.merge(self.jobs, self.jobs_to_worknet, on='id_jobs')
         matched_positions = pd.merge(matched_jobs, self.worknet_positions, on='work_code')
@@ -65,8 +59,31 @@ class JobMatcher:
         job_titles = [''] + list(job_titles)
         selected_job_title = st.selectbox("찾을 직업을 선택해!", job_titles)
 
-        if selected_job_title:
-            filtered_data = self.final_matched_data[self.final_matched_data['name_jobs'] == selected_job_title]
+        # 지역 정보 변환을 위한 내부 함수
+        def convert_region(region):
+            region_mapping = {
+                '경기': '경기도', '경남': '경상남도', '경북': '경상북도',
+                '광주': '광주광역시', '대구': '대구광역시', '대전': '대전광역시',
+                '부산': '부산광역시', '서울': '서울특별시', '인천': '인천광역시',
+                '전북': '전라북도', '충남': '충청남도', '전북특별자치도':'전라북도',
+                '강원특별자치도':'강원도', '세종특별자치시':'서울특별시',
+            }
+            return region_mapping.get(region, region)
+        
+        # 지역 정보 추출 및 변환
+        self.final_matched_data['region'] = self.final_matched_data['job_describ_2'].apply(
+            lambda x: convert_region(x.split(' ')[4]) if len(x.split(' ')) > 4 and x.split(' ')[2] == '~' else convert_region(x.split(' ')[2]) if len(x.split(' ')) > 2 else 'Unknown'
+        )
+        regions = self.final_matched_data['region'].unique()
+        regions = list(sorted(regions))
+        selected_regions = st.multiselect("지역을 선택해!", options=regions)
+
+        # 멀티셀렉트를 통해 선택된 지역들에 대한 필터링 적용
+        filtered_data = self.final_matched_data[self.final_matched_data['name_jobs'] == selected_job_title]
+        if selected_regions:
+            filtered_data = filtered_data[filtered_data['region'].isin(selected_regions)]
+
+        if selected_job_title and not filtered_data.empty:
             for _, row in filtered_data.iterrows():
                 st.markdown(f"""
                 <div style="background-color:#cbf3f0;padding:20px;border-radius:10px;margin-bottom:10px;">
@@ -79,6 +96,12 @@ class JobMatcher:
                     <a href="{row['link']}" target="_blank">More Info</a>
                 </div>
                 """, unsafe_allow_html=True)
+        else:
+            st.write("아쉽지만 알맞은 공고가 없어..")
+
+
+
+
 
 if __name__ == '__main__':
     job_matcher = JobMatcher()
