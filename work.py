@@ -25,7 +25,7 @@ class JobMatcher:
             db_path(str) : SQLite DB 파일 경로
         '''
         self.db_path = db_path
-        self.jobs, self.jobs_to_worknet, self.worknet_positions, self.worknet_company = self.load_data()
+        self.jobs, self.jobs_to_worknet, self.worknet_positions, self.worknet_company, self.ncs_to_jobs = self.load_data()
         self.final_matched_data = self.match_data()
 
 
@@ -38,8 +38,9 @@ class JobMatcher:
         jobs_to_worknet = pd.read_sql_query('SELECT * FROM jobs_to_worknet', conn)
         worknet_positions = pd.read_sql_query('SELECT * FROM worknet_positions', conn)
         worknet_company = pd.read_sql_query('SELECT * FROM worknet_company', conn)
+        ncs_to_jobs = pd.read_sql_query('SELECT * FROM ncs_to_jobs', conn)  # ncs_to_jobs 데이터 로드 추가
         conn.close()
-        return jobs, jobs_to_worknet, worknet_positions, worknet_company
+        return jobs, jobs_to_worknet, worknet_positions, worknet_company, ncs_to_jobs
 
     def match_data(self):
         '''
@@ -55,7 +56,37 @@ class JobMatcher:
         사용자에게 직업 선택 인터페이스를 제공하고 매칭된 채용 공고를 표시합니다.
         '''
         st.markdown('<h1 style = "color : #2ec4b6; font-size : 50px; text-align : left;">공고매칭</h1>', unsafe_allow_html=True)
-        job_titles = self.final_matched_data['name_jobs'].unique()
+
+        # 분야 코드와 분야명을 매핑
+        field_name_mapping = {
+            '13': '음식+식품',
+            '21': '음식+식품',
+            '20': '정보통신',
+            '6': '보건',
+            '14': '건설',
+            '8': '문화',
+            # 추가적으로 매핑할 분야 코드가 있으면 여기에 추가
+        }
+
+        # ncs_code의 뒷 6자리를 제외한 나머지를 사용하여 분야명으로 변환
+        self.ncs_to_jobs['field_name'] = self.ncs_to_jobs['ncs_code'].apply(
+            lambda x: field_name_mapping.get(str(x)[:-6], '기타'))
+
+        # 분야명 기반으로 selectbox 생성
+        field_names = [''] + sorted(self.ncs_to_jobs['field_name'].unique())
+        selected_field_name = st.selectbox("직업 분야를 선택해!", field_names)
+
+        # 선택된 분야명에 해당하는 직업을 필터링
+        if selected_field_name:
+            # 분야명으로부터 해당하는 분야 코드를 찾음
+            selected_field_codes = [code for code, name in field_name_mapping.items() if name == selected_field_name]
+            
+            # 필터링 로직을 분야 코드를 사용하여 진행
+            filtered_jobs_ids = self.ncs_to_jobs[self.ncs_to_jobs['field_name'] == selected_field_name]['id_jobs']
+            job_titles = self.jobs[self.jobs['id_jobs'].isin(filtered_jobs_ids)]['name_jobs'].unique()
+        else:
+            job_titles = self.jobs['name_jobs'].unique()
+
         job_titles = [''] + list(job_titles)
         selected_job_title = st.selectbox("찾을 직업을 선택해!", job_titles)
 
@@ -66,15 +97,18 @@ class JobMatcher:
                 '광주': '광주광역시', '대구': '대구광역시', '대전': '대전광역시',
                 '부산': '부산광역시', '서울': '서울특별시', '인천': '인천광역시',
                 '전북': '전라북도', '충남': '충청남도', '전북특별자치도':'전라북도',
-                '강원특별자치도':'강원도', '세종특별자치시':'서울특별시',
+                '강원특별자치도':'강원도', '세종특별자치시':'서울특별시', '제주':'제주특별자치도',
             }
-            return region_mapping.get(region, region)
+            return region_mapping.get(region, None)
         
-        # 지역 정보 추출 및 변환
+    # 지역 정보 추출 및 변환, 'Unknown' 제외
         self.final_matched_data['region'] = self.final_matched_data['job_describ_2'].apply(
-            lambda x: convert_region(x.split(' ')[4]) if len(x.split(' ')) > 4 and x.split(' ')[2] == '~' else convert_region(x.split(' ')[2]) if len(x.split(' ')) > 2 else 'Unknown'
+            lambda x: convert_region(x.split(' ')[4]) if len(x.split(' ')) > 4 and x.split(' ')[2] == '~' 
+            else convert_region(x.split(' ')[2]) if len(x.split(' ')) > 2 else None
         )
-        regions = self.final_matched_data['region'].unique()
+
+        # 'None' 값(이전의 'Unknown') 제외하고 지역 목록 생성
+        regions = self.final_matched_data['region'].dropna().unique()
         regions = list(sorted(regions))
         selected_regions = st.multiselect("지역을 선택해!", options=regions)
 
