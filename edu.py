@@ -108,8 +108,13 @@ class EduMatcher:
         반환값 :
             recomended_programs(DataFrame) : 추천된 교육 프로그램 목록
         '''
-        job_id = self.related_jobs[self.related_jobs['name_jobs'] == job_title]['id_jobs'].iloc[0]
+        # job_title을 사용하여 jobs_df에서 해당 직업의 id_jobs를 찾습니다.
+        job_id = self.jobs_df[self.jobs_df['name_jobs'] == job_title]['id_jobs'].iloc[0]
+        
+        # ncs_to_jobs_df를 사용하여 해당 job_id에 매칭되는 ncs_code를 찾습니다.
         ncs_codes = self.ncs_to_jobs_df[self.ncs_to_jobs_df['id_jobs'] == job_id]['ncs_code']
+        
+        # 찾은 ncs_codes를 사용하여 edu_program_df에서 해당 교육 프로그램을 필터링합니다.
         recommended_programs = self.edu_program_df[self.edu_program_df['ncs_code'].isin(ncs_codes)]
         recommended_programs = recommended_programs.merge(self.edu_company_df, on='id_edu_company', how='left')
 
