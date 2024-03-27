@@ -45,25 +45,50 @@ class EduMatcher:
     def prepare_data(self):
         '''
         로드된 데이터를 처리하고, 사용자 인터페이스에 필요한 형태로 준비합니다.
+        분야에 따른 NCS 코드 분류 로직을 추가합니다.
         '''
         self.edu_company_df['simplified_address'] = self.edu_company_df['address'].apply(
             lambda x: x.split()[0] if pd.notnull(x) else x)
         self.unique_regions = sorted(self.edu_company_df['simplified_address'].unique())
 
-        unique_ncs_codes = self.edu_program_df['ncs_code'].unique()
-        related_job_ids = self.ncs_to_jobs_df[self.ncs_to_jobs_df['ncs_code'].isin(unique_ncs_codes)]['id_jobs'].unique()
-        self.related_jobs = self.jobs_df[self.jobs_df['id_jobs'].isin(related_job_ids)]
+        # edu_program_df에서 ncs_code를 기반으로 대분류를 결정하는 로직 수정
+        # ncs_code의 뒤 6자리를 제외한 나머지 부분을 사용
+        self.edu_program_df['job_category'] = self.edu_program_df['ncs_code'].apply(
+            lambda ncs: self.ncs_code_to_category(str(ncs)[:-6]))  # 뒤의 6자리를 제외
+
+        self.unique_categories = sorted(self.edu_program_df['job_category'].unique())
+        
+    def ncs_code_to_category(self, ncs_code):
+        categories = {
+            '13': '음식+식품',
+            '21': '음식+식품',
+            '20': '정보통신',
+            '6': '보건',
+            '14': '건설',
+            '8': '문화'
+        }
+        return categories.get(ncs_code, '기타')
 
     def app_interface(self):
         '''
         Streamlit을 통해 사용자 인터페이스를 구성하고 사용자 입력을 처리합니다.
         '''
-        st.markdown('<h1 style = "color : #2ec4b6; font-size : 50px; text-align : left;">교육매칭</h1>',
+        st.markdown('<h1 style="color: #2ec4b6; font-size: 50px; text-align: left;">교육매칭</h1>',
                     unsafe_allow_html=True)
 
-        selected_job = st.selectbox("찾을 직업을 선택해!", self.related_jobs["name_jobs"].unique())
-        selected_regions = st.multiselect("교육을 들을 지역을 골라줘",
-                                          options=['All'] + list(self.unique_regions), default='All')
+        selected_category = st.selectbox("먼저 직업 분야를 골라줘!", ['All'] + list(self.unique_categories))
+
+        if selected_category != 'All':
+            filtered_programs = self.edu_program_df[self.edu_program_df['job_category'] == selected_category]
+            filtered_ncs_codes = filtered_programs['ncs_code'].unique()
+            related_job_ids = self.ncs_to_jobs_df[self.ncs_to_jobs_df['ncs_code'].isin(filtered_ncs_codes)]['id_jobs'].unique()
+            filtered_jobs = self.jobs_df[self.jobs_df['id_jobs'].isin(related_job_ids)]
+        else:
+            filtered_jobs = self.jobs_df
+
+        selected_job = st.selectbox("이제 직업을 선택해!", filtered_jobs["name_jobs"].unique())
+
+        selected_regions = st.multiselect("교육을 들을 지역을 골라줘", options=['All'] + list(self.unique_regions), default='All')
         selected_mode = st.selectbox("온라인 강의만 들을거야?", ['상관없어', '응', '아니'])
 
         if st.button("교육추천"):
