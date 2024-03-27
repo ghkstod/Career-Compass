@@ -30,8 +30,8 @@ def main():
     '''
     
     with st.sidebar:
-        choice = option_menu("Menu", ["Main", "직업추천", "교육매칭","공고매칭","커뮤니티",'취업시장 동향(Beta)'],
-                            icons=['house', 'bi bi-search','bi bi-stack-overflow' ,'bi bi-person-badge-fill','bi bi-people-fill','bi bi-book-fill'],
+        choice = option_menu("Menu", ["Main", "직업추천", '취업시장 동향(Beta)',"교육매칭","공고매칭","커뮤니티"],
+                            icons=['house', 'bi bi-search','bi bi-book-fill','bi bi-stack-overflow' ,'bi bi-person-badge-fill','bi bi-people-fill'],
                             menu_icon="app-indicator", default_index=0,
                             styles={
             "container": {"padding": "4!important", "background-color": "#fafafa"},
